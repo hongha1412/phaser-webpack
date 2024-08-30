@@ -37,5 +37,9 @@
     "webpack": "^5.77.0",
     "webpack-cli": "^5.0.1",
     "webpack-dev-server": "^4.13.2"
+  },
+  "dependencies": {
+    "@dimforge/rapier2d-compat": "^0.14.0",
+    "phaser3-rex-plugins": "^1.80.6"
   }
 }

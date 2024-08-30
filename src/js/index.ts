@@ -1,4 +1,4 @@
-import "phaser";
+import * as Phaser from "phaser";
 import { GameScene, LoaderScene } from "./scenes";
 
 const config: Phaser.Types.Core.GameConfig = {
@@ -10,19 +10,14 @@ const config: Phaser.Types.Core.GameConfig = {
     keyboard: true,
     gamepad: true,
   },
+  scale: {
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    mode: Phaser.Scale.ScaleModes.FIT
+  },
   render: {
     pixelArt: true,
     antialias: false,
     antialiasGL: false,
-  },
-  physics: {
-    default: "arcade",
-    arcade: {
-      debug: false,
-      gravity: {
-        y: 500,
-      },
-    },
   },
   scene: [LoaderScene, GameScene],
 };

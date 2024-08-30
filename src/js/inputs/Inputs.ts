@@ -6,6 +6,10 @@ export interface Keys {
   Z: Phaser.Input.Keyboard.Key;
   X: Phaser.Input.Keyboard.Key;
   C: Phaser.Input.Keyboard.Key;
+  Q: Phaser.Input.Keyboard.Key;
+  E: Phaser.Input.Keyboard.Key;
+  R: Phaser.Input.Keyboard.Key;
+  T: Phaser.Input.Keyboard.Key;
   up: Phaser.Input.Keyboard.Key;
   down: Phaser.Input.Keyboard.Key;
   left: Phaser.Input.Keyboard.Key;
@@ -23,7 +27,7 @@ export class Inputs {
 
   constructor(input: Phaser.Input.InputPlugin) {
     this._input = input;
-    this._keys = this._input.keyboard.addKeys("W,A,S,D,Z,X,C,up,left,down,right,space,enter,comma,period") as Keys;
+    this._keys = this._input.keyboard.addKeys("W,A,S,D,Z,X,C,Q,E,R,T,up,left,down,right,space,enter,comma,period") as Keys;
   }
 
   public setPadIndex(value: number) {
@@ -48,6 +52,22 @@ export class Inputs {
 
   public get down() {
     return this.keys.down.isDown || this.keys.S.isDown || this.padAxisV === 1;
+  }
+
+  public get increase() {
+    return this.keys.Q.isDown;
+  }
+
+  public get decrease() {
+    return this.keys.E.isDown;
+  }
+
+  public get selectUp() {
+    return this.keys.R.isDown;
+  }
+
+  public get selectDown() {
+    return this.keys.T.isDown;
   }
 
   protected get keys() {
