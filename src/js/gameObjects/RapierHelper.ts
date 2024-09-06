@@ -27,8 +27,9 @@ export default class RapierHelper {
      * Enable rapier physics body for given game object
      * <p>NOTE: game object should have below properties:</p>
      * <ul>
-     *     <li>constructor.name: 'Rectangle' | 'Polygon' (other will be stand for client character)</li>
+     *     <li>constructor.name: 'Rectangle' | 'Polygon' (other will be stand for character)</li>
      *     <li>width/height (if constructor.name is Rectangle)</li>
+     *     <li>origin.x, origin.y: To correction offset of collider</li>
      *     <li>pathData (if constructor.name is Polygon)</li>
      * </ul>
      * @param go Game object
@@ -49,7 +50,6 @@ export default class RapierHelper {
             rapier = go.rapier;
         }
         if (!rapier) {
-            console.error('Physics world not found for object', go);
             return null;
         }
 
@@ -88,18 +88,22 @@ export default class RapierHelper {
         } else if (colliderType) {
             colliderDesc = colliderType;
         } else {
-            if (go.constructor.name === 'Rectangle') {
+            if (go.constructor.name === 'Rectangle' || go.constructor.name === 'Zone') {
                 colliderDesc = RAPIER.ColliderDesc.cuboid(go.width / 2, go.height / 2);
             } else if (go.constructor.name === 'Polygon') {
-                colliderDesc = RAPIER.ColliderDesc.convexHull(new Float32Array(go.pathData)) as RAPIER.ColliderDesc;
+                colliderDesc = RAPIER.ColliderDesc.roundConvexHull(new Float32Array(go.pathData), 0.1) as RAPIER.ColliderDesc;
             } else {
                 colliderDesc = RAPIER.ColliderDesc.cuboid(go.width / 2, go.height / 2);
             }
         }
-        // Config common settings
+        // Config common settings & collision/solver groups
         if (RapierHelper.isFixedBody(bodyDesc)) {
             colliderDesc.setMass(Number.MAX_SAFE_INTEGER)
+                .setActiveCollisionTypes(RAPIER.ActiveCollisionTypes.DEFAULT | RAPIER.ActiveCollisionTypes.DYNAMIC_KINEMATIC)
                 .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+        } else if (bodyType === 'character') {
+            colliderDesc.setSensor(true)
+                .setActiveCollisionTypes(RAPIER.ActiveCollisionTypes.DEFAULT | RAPIER.ActiveCollisionTypes.DYNAMIC_KINEMATIC);
         }
 
         // Create rigid body
@@ -113,10 +117,8 @@ export default class RapierHelper {
             go.setDataEnabled();
         }
         const rapierBody = new RapierBody(rapier, rigidBody, collider);
-        rapierBody.checkBlock.bottom = false;
-        rapierBody.checkBlock.left = false;
-        rapierBody.checkBlock.right = false;
         go.setData(RapierConfig.A_RAPIER_BODY, rapierBody);
+        go.setName(rigidBody.handle);
         return rapierBody;
     }
 
@@ -140,21 +142,19 @@ export default class RapierHelper {
      */
     public static disablePhysics(go: any) {
         if (!go.rapier) {
-            console.error('Physics world not found for object', go);
             return;
         }
         const body: RapierBody = go.getData(RapierConfig.A_RAPIER_BODY);
         if (!body || !body.collider) {
-            console.error('Physics body not found for object', go);
             return;
         }
 
         const rapier: RAPIER.World = go.rapier;
-        rapier.removeCollider(body.collider, false);
+        rapier.removeRigidBody(body.rigidBody);
     }
 
     /**
-     * Config for movable object physics
+     * Config for dynamic movable object physics
      * <p>NOTE: game object should have below properties:</p>
      * <ul>
      *     <li>rapier: Rapier physics world</li>
@@ -165,33 +165,69 @@ export default class RapierHelper {
     public static movableConfig(go: any) {
         const rapier: RAPIER.World = go.rapier;
         if (!rapier) {
-            console.error('Physics world not found for object', go);
             return;
         }
         const body: RapierBody = go.getData(RapierConfig.A_RAPIER_BODY);
         if (!body) {
-            console.error('Physics body not found for object', go);
             return;
         }
-        const hook: RAPIER.PhysicsHooks = go.scene.hooks;
         body.enableCcd(true);
         body.rigidBody.setSoftCcdPrediction(150);
     }
 
+    /**
+     * Used to dump manifold data to console
+     * @param manifold {@link RAPIER.TempContactManifold} object
+     */
     public static dumpManifold(manifold: RAPIER.TempContactManifold) {
         const dummy = {};
         // @ts-ignore
         Object.getOwnPropertyNames(manifold.__proto__).filter(p => !p.startsWith('constructor') && !p.startsWith('free')).forEach(p => {
             dummy[p] = manifold[p]();
         });
-        console.info(dummy);
+        console.log(dummy);
     }
 
+    /**
+     * Check if given body is fixed or not (Obstacles/platform oobjects/ground)
+     * @param body {@link RAPIER.RigidBody} or {@link RAPIER.RigidBodyDesc} object
+     * @returns true: Fixed body / false: Not fixed body
+     */
     public static isFixedBody(body: RAPIER.RigidBody | RAPIER.RigidBodyDesc) {
         if (body instanceof RAPIER.RigidBodyDesc) {
             return (body as RAPIER.RigidBodyDesc).dominanceGroup === 127;
-        } else if (body instanceof RAPIER.RigidBody) {
+        } else {
             return (body as RAPIER.RigidBody).dominanceGroup() === 127;
         }
+    }
+
+    /**
+     * Build collision groups bitmask
+     * @param groups Array of groups value (undefined stand for 0xffff)
+     * @param filters Array of filters value (undefined stand for 0xffff)
+     * @returns Collision groups bitmask value
+     */
+    public static buildCollisionGroups(groups?: number[], filters?: number[]): number {
+        const belongGroups: number = !groups ? 0xffff : groups.reduce((prev, cur) => prev | cur, 0);
+        const filterGroups: number = !filters ? 0xffff : filters.reduce((prev, cur) => prev | cur, 0);
+        return (belongGroups << 16) | filterGroups;
+    }
+
+    /**
+     * Extract group members from collision group bitmask value
+     * @param groupBitmask The group bitmask value
+     * @returns Group members bitmask
+     */
+    public static getCollisionGroupMembers(groupBitmask: number) {
+        return groupBitmask >> 16;
+    }
+
+    /**
+     * Extract group filters from collision group bitmask value
+     * @param groupBitmask The group bitmask value
+     * @returns Group filters bitmask
+     */
+    public static getCollisionGroupFilters(groupBitmask: number) {
+        return groupBitmask & 0xffff;
     }
 }

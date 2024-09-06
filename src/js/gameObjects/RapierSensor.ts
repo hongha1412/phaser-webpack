@@ -1,10 +1,12 @@
 import RAPIER from "@dimforge/rapier2d-compat";
-import RapierBody from "./RapierBody";
 
 export default class RapierSensor {
-    private _targetRapierBodies: RapierBody[] = [];
+    private _targetHandles: number[] = [];
     private _collider: RAPIER.Collider;
     private rapier: RAPIER.World;
+    private readonly rayShape: RAPIER.Cuboid;
+    private rayShapeSize: number = 2;
+    private name: string = '';
 
     get collider(): RAPIER.Collider {
         return this._collider;
@@ -14,38 +16,57 @@ export default class RapierSensor {
         this._collider = value;
     }
 
-    constructor(rapier: RAPIER.World, colliderDesc: RAPIER.ColliderDesc, parent: RAPIER.RigidBody) {
+    constructor(rapier: RAPIER.World, colliderDesc: RAPIER.ColliderDesc, parent: RAPIER.RigidBody, dir: 'top' | 'bottom' | 'left' | 'right') {
         this.rapier = rapier;
+        this.name = dir;
         this._collider = this.rapier.createCollider(colliderDesc, parent);
         if (!this._collider.isSensor()) {
             this._collider.setSensor(true);
         }
+        // Create ray for detect sensor lost collide with obstacle
+        switch (dir) {
+            case 'top':
+            case 'bottom':
+                this.rayShape = new RAPIER.Cuboid((parent.userData as any).width / 2, this.rayShapeSize / 2);
+                break;
+            case 'left':
+            case 'right':
+                this.rayShape = new RAPIER.Cuboid(this.rayShapeSize / 2, (parent.userData as any).height / 2);
+                break;
+        }
     }
 
-    get targetRapierBodies(): RapierBody[] {
-        return this._targetRapierBodies;
+    get targetHandles(): number[] {
+        return this._targetHandles;
     }
 
-    set targetRapierBodies(value: RapierBody[]) {
-        this._targetRapierBodies = value;
+    set targetHandles(value: number[]) {
+        this._targetHandles = value;
     }
 
-    contains(target: RapierBody): boolean {
-        return this.targetRapierBodies.indexOf(target) >= 0;
+    isCollidingWith(target: RAPIER.Collider): boolean {
+        return this.rapier.intersectionPair(this.collider, target);
+        // let castVel = new RAPIER.Vector2(1, 1);
+        // const hit = this.rapier.castShape(this.collider.translation(), 0, castVel, this.rayShape, 0, this.rayShapeSize, true, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS);
+        // return hit?.collider === target;
     }
 
-    pushTarget(target: RapierBody) {
-        this.targetRapierBodies.push(target);
+    containsTarget(target: number): boolean {
+        return this.targetHandles.indexOf(target) >= 0;
     }
 
-    removeTarget(target: RapierBody) {
-        const targetIndex: number = this.targetRapierBodies.indexOf(target);
+    addTarget(target: number) {
+        this.targetHandles.push(target);
+    }
+
+    removeTarget(target: number) {
+        const targetIndex: number = this.targetHandles.indexOf(target);
         if (targetIndex < 0) return;
-        this.targetRapierBodies.splice(targetIndex, 1);
+        this.targetHandles.splice(targetIndex, 1);
     }
 
     resetTarget() {
-        this.targetRapierBodies = [];
+        this.targetHandles = [];
     }
 
     setEnabled(enabled: boolean) {

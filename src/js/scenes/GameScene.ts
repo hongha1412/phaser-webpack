@@ -43,29 +43,21 @@ export class GameScene extends Phaser.Scene {
 
   public update() {
     this.rapier.step(this.eventQueue);
-
-    // Drain collide events
-    this.collideEvents = [];
-    this.eventQueue.drainCollisionEvents((handle1: number, handle2: number, started: boolean) => {
-      this.collideEvents.push({ handle1, handle2, started });
-      const c1 = this.rapier.getCollider(handle1);
-      const c2 = this.rapier.getCollider(handle2);
-      this.graphics.strokePoints((c1.parent().userData as any).pathData, true, true);
-      this.graphics.strokePoints((c2.parent().userData as any).pathData, true, true);
-      console.log(c1, c2, started);
-    });
+    const toWorld = (base, pathData) => {
+      const vertices = [];
+      for (let i = 0; i < pathData.length; i++) {
+        vertices.push({ x: pathData[i] + base.x - base.width/2, y: pathData[++i] + base.y - base.height/2 });
+      }
+      return vertices;
+    }
 
     // Update rapier bodies
     this.rapier.bodies.forEach((body: RAPIER.RigidBody) => {
       if (body.bodyType() !== RigidBodyType.KinematicPositionBased || !body.userData || !body.userData['rapierBody']) return;
       body.userData['x'] = body.userData['rapierBody'].translation().x;
       body.userData['y'] = body.userData['rapierBody'].translation().y;
-      ((body.userData as any).getData(RapierConfig.A_RAPIER_BODY) as RapierBody)?.updateObstacles(this.collideEvents);
     });
     
-    // const draw = (pathData) => {
-    //   pathData
-    // }
     this.eventQueue.drainContactForceEvents((e: RAPIER.TempContactForceEvent) => {
       console.log('event', e);
     });
@@ -74,14 +66,12 @@ export class GameScene extends Phaser.Scene {
 
   public create() {
     this.debug = this.add.graphics({ lineStyle: { color: 0xff0000, width: 1 } }).setDepth(99999);
-    this.graphics = this.add.graphics({ lineStyle: { color: 0xff0000, width: 1 } }).setDepth(99999);
+    this.graphics = this.add.graphics({ lineStyle: { color: 0xff0000, width: 1 } }).setDepth(999999);
     const tilemap = this.make.tilemap({ key: "tilemap" });
     const tileset = tilemap.addTilesetImage("tiles");
     const tileLayer = tilemap.createLayer(0, tileset, 0, 0).forEachTile((tile) => {
       if (tile.index !== 6 && tile.index !== 10) return;
-      const x = tile.pixelX + tile.width / 2;
-      const y = tile.pixelY + tile.height / 2;
-      const brick = this.add.rectangle(x, y, tile.width, tile.height);
+      const brick = this.add.polygon(tile.pixelX, tile.pixelY, [0, 0, tile.width, 0, tile.width, tile.height, 0, tile.height]);
       (RapierHelper.enablePhysics(brick, 'fixed') as RapierBody);
       brick.setName(brick.getData('body').collider.handle);
     });
@@ -99,7 +89,7 @@ export class GameScene extends Phaser.Scene {
     //   new Player(this, 32, 100).setDataEnabled()
     // }
 
-    this._polygon = this.add.polygon(100, 100, [0, 0, 5, 0, 10, 5, 15, 5, 20, 10, 15, 20, 0, 20], 0xff00ff, 0xffff00);
+    this._polygon = this.add.polygon(100, 100, [0, 0, 5, 0, 200, 50, 0, 50], 0xff00ff, 0xffff00);
     RapierHelper.enablePhysics(this._polygon, 'fixed');
     const extra = this.add.polygon(10, 120, [0, 0, 5, 10, 10, 5, 15, 5, 20, 10, 15, 20, 0, 20], 0xff00ff, 0xffff00);
     RapierHelper.enablePhysics(extra, 'fixed');
