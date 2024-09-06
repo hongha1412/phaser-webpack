@@ -13,7 +13,7 @@ export enum PlayerStates {
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   public static GRAVITY = 1800;
-  public static JUMP_SPEED = -700;
+  public static JUMP_SPEED = -600;
   public static MOVE_SPEED = 100;
   public scene: GameScene;
   public rapier: RAPIER.World;
