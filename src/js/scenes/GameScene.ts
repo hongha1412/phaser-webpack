@@ -43,6 +43,12 @@ export class GameScene extends Phaser.Scene {
 
   public update() {
     this.rapier.step(this.eventQueue);
+    this.rapier.forEachRigidBody(body => {
+      const go = body.userData as any;
+      if (!go) return;
+      go.x = body.translation().x;
+      go.y = body.translation().y;
+    });
     const toWorld = (base, pathData) => {
       const vertices = [];
       for (let i = 0; i < pathData.length; i++) {
@@ -70,10 +76,10 @@ export class GameScene extends Phaser.Scene {
     const tilemap = this.make.tilemap({ key: "tilemap" });
     const tileset = tilemap.addTilesetImage("tiles");
     const tileLayer = tilemap.createLayer(0, tileset, 0, 0).forEachTile((tile) => {
-      if (tile.index !== 6 && tile.index !== 10) return;
-      const brick = this.add.polygon(tile.pixelX, tile.pixelY, [0, 0, tile.width, 0, tile.width, tile.height, 0, tile.height]);
-      (RapierHelper.enablePhysics(brick, 'fixed') as RapierBody);
-      brick.setName(brick.getData('body').collider.handle);
+      // if (tile.index !== 6 && tile.index !== 10) return;
+      // const brick = this.add.polygon(tile.pixelX, tile.pixelY, [0, 0, tile.width, 0, tile.width, tile.height, 0, tile.height]);
+      // (RapierHelper.enablePhysics(brick, 'fixed') as RapierBody);
+      // brick.setName(brick.getData('body').collider.handle);
     });
     const ground = this.add.rectangle(tilemap.widthInPixels / 2, tilemap.heightInPixels - 8, tilemap.widthInPixels, 16).setName(`ground`);
     (RapierHelper.enablePhysics(ground, 'fixed') as RapierBody);
@@ -83,16 +89,23 @@ export class GameScene extends Phaser.Scene {
     this._objectGroup = this.add.group();
 
     this._inputs = new GameInputs(this.input);
+    // this.input.on(Phaser.Input.Events.POINTER_UP, (p: Phaser.Input.Pointer) => {
+    //   const obstacle = this.add.polygon(p.x, p.y, [0, 0, 5, 0, 5, 5, 0, 5], 0xff0000, 1).setOrigin(0);
+    //   obstacle.addToUpdateList();
+    //   RapierHelper.enablePhysics(obstacle, 'dynamic');
+    //   RapierHelper.movableConfig(obstacle);
+    // });
 
     this._player = new Player(this, 32, 100).setDataEnabled();
     // for (let i = 0; i <= 100; i++) {
     //   new Player(this, 32, 100).setDataEnabled()
     // }
 
-    this._polygon = this.add.polygon(100, 100, [0, 0, 5, 0, 200, 50, 0, 50], 0xff00ff, 0xffff00);
-    RapierHelper.enablePhysics(this._polygon, 'fixed');
-    const extra = this.add.polygon(10, 120, [0, 0, 5, 10, 10, 5, 15, 5, 20, 10, 15, 20, 0, 20], 0xff00ff, 0xffff00);
-    RapierHelper.enablePhysics(extra, 'fixed');
+    // this._polygon = this.add.polygon(100, 100, [0, 0, 5, 0, 200, 50, 0, 50], 0xff00ff, 0xffff00);
+    // RapierHelper.enablePhysics(this._polygon, 'fixed');
+    // const extra = this.add.polygon(10, 120, [0, 0, 5, 10, 10, 5, 15, 5, 20, 10, 15, 20, 0, 20], 0xff00ff, 0xffff00);
+    // RapierHelper.enablePhysics(extra, 'fixed');
+    RapierHelper.enablePhysics(this.add.polygon(5, 140, [0, 0, 2558, 0, 2559, 32, 0, 32, 0, 0], 0x00ffff, 0.8).setOrigin(0));
 
     const { widthInPixels, heightInPixels } = tilemap;
 

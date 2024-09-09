@@ -11,6 +11,7 @@ export default class RapierBody {
     private _controller: RAPIER.KinematicCharacterController;
     private _vx: number = 0;
     private _vy: number = 0;
+    private _vxy: number = 0;
     private _prevX: number = 0;
     private _prevY: number = 0;
     private _dx: number = 0;
@@ -58,7 +59,7 @@ export default class RapierBody {
     }
 
     get vy(): number {
-        return this._vy;
+        return this._vy + this._vxy;
     }
 
     set vy(value: number) {
@@ -66,6 +67,17 @@ export default class RapierBody {
             this._vy = 1800;
         else
             this._vy = value;
+    }
+
+    get vxy(): number {
+        return this._vy;
+    }
+
+    set vxy(value: number) {
+        if (value > 1800)
+            this._vxy = 1800;
+        else
+            this._vxy = value;
     }
 
     get prevX(): number {

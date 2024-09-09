@@ -161,17 +161,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         const deltaS = delta / 1000;
         const rapierBody: RapierBody = go.rapierBody;
         if (!rapierBody) return;
-        // Update game object position
-        go.x = body.translation().x;
-        go.y = body.translation().y;
 
         // Process movement control
         if (!rapierBody.controller) return;
         // Update obstacles
         rapierBody.update([]);
         // Apply gravity if not standing on ground
-        if (!rapierBody.onFloor())
-            rapierBody.vy += (1800 * deltaS);
+        if (!rapierBody.onFloor()) {
+          rapierBody.vy += (1800 * deltaS);
+          rapierBody.vxy = 0;
+        } else if (rapierBody.vx !== 0)
+          rapierBody.vxy = 1800 * deltaS;
+        else
+          rapierBody.vxy = 0;
         // Calculate movement
         let deltaMovement = { x: rapierBody.vx * deltaS, y: rapierBody.vy * deltaS };
         this.predictMovement(deltaMovement, rapierBody);
@@ -211,6 +213,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   predictMovement(deltaMovement: { x: number; y: number }, rapierBody: RapierBody) {
     const predictDelta = { x: deltaMovement.x, y: deltaMovement.y };
     const originObstacles = Array.from(rapierBody.obstacles.values());
+    let groundCollision: RAPIER.CharacterCollision;
 
     // Predict next movement
     rapierBody.controller.computeColliderMovement(rapierBody.collider, predictDelta, undefined, undefined, (target: RAPIER.Collider) => {
@@ -222,6 +225,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         for (let i = 0; i < rapierBody.controller.numComputedCollisions(); i++) {
             if (!(collision = rapierBody.controller.computedCollision(i))) continue;
             rapierBody.collideDetection(collision);
+            if (rapierBody.sensorBottom.containsTarget(collision.collider.handle))
+              groundCollision = collision;
         }
     }
     // Recursive predict movement when obstacles changed
